@@ -38,7 +38,7 @@
 #define MAKE_BLOCK_PERIOD       13
 #define QUERY_RETRIES           2
 
-#define CACHE			1
+#define CACHE			0
 #define CACHE_MAX_SIZE		600000
 #define CACHE_MAX_SAMPLES	100
 #define ORPHAN_HASH_SIZE	2
@@ -49,8 +49,11 @@ struct orphan_block;
 struct block_remark;
 
 struct block_internal {
-	struct ldus_rbtree node;
+//        struct ldus_rbtree node;
+
 	xdag_hash_t hash;
+        struct ldus_rbtree node;
+
 	xdag_diff_t difficulty;
 	xdag_amount_t amount, linkamount[MAX_LINKS], fee;
 	xdag_time_t time;
@@ -66,6 +69,7 @@ struct block_internal {
 	};
 	uint16_t flags, in_mask, n_our_key;
 	uint8_t nlinks:4, max_diff_link:4, reserved;
+//	struct ldus_rbtree node;
 };
 
 #define N_BACKREFS      (sizeof(struct block_internal) / sizeof(struct block_internal *) - 1)
@@ -170,7 +174,14 @@ xdag_time_t xdag_start_main_time(void)
 
 static inline int lessthan(struct ldus_rbtree *l, struct ldus_rbtree *r)
 {
-	return memcmp(l + 1, r + 1, 24) < 0;
+	size_t node_offset = offsetof(struct block_internal, node);
+	ssize_t hash_offset = offsetof(struct block_internal, hash);
+	hash_offset -= node_offset;
+//	printf("prova %d\n", hash_offset);
+//	fflush(stdout);
+//	printf("%p %p %p %p", l, l - 2, r, r - 2);
+//	fflush(stdout);
+	return memcmp(l - 2, r - 2, 24) < 0;
 }
 
 ldus_rbtree_define_prefix(lessthan, static inline, )
@@ -178,15 +189,30 @@ ldus_rbtree_define_prefix(lessthan, static inline, )
 static inline struct block_internal *block_by_hash(const xdag_hashlow_t hash)
 {
 	struct block_internal *bi;
+        size_t node_offset = offsetof(struct block_internal, node);
+        size_t hash_offset = offsetof(struct block_internal, hash);
+//        printf("node %d\n", node_offset);
+//        printf("hash %d\n", hash_offset);
+//        fflush(stdout);
+
 	pthread_mutex_lock(&rbtree_mutex);
-	bi = (struct block_internal *)ldus_rbtree_find(root, (struct ldus_rbtree *)hash - 1);
+//	bi = (struct block_internal *)((uintptr_t)ldus_rbtree_find(root, (struct ldus_rbtree *)((uintptr_t)((uintptr_t)hash + node_offset) - hash_offset)) - node_offset);
+//        printf("%p %p %p %p \n", (struct ldus_rbtree *)hash, (struct ldus_rbtree *)hash + 2, ((struct ldus_rbtree*)ldus_rbtree_find(root, (struct ldus_rbtree *)hash + 2 )), (((struct ldus_rbtree*)ldus_rbtree_find(root, (struct ldus_rbtree *)hash + 2 ))  - 2  ));
+
+        	bi = (struct block_internal *)(((struct ldus_rbtree*)ldus_rbtree_find(root, (struct ldus_rbtree *)hash + 2 ))   );
+		if(bi){
+			bi= (struct ldus_rbtree*)bi - 2;
+			}
 	pthread_mutex_unlock(&rbtree_mutex);
 	return bi;
 }
 
 static inline struct cache_block *cache_block_by_hash(const xdag_hashlow_t hash)
 {
-	return (struct cache_block *)ldus_rbtree_find(cache_root, (struct ldus_rbtree *)hash - 1);
+        ssize_t node_offset = offsetof(struct block_internal, node);
+        size_t hash_offset = offsetof(struct block_internal, hash);
+        node_offset -= hash_offset;
+	return (struct cache_block *)ldus_rbtree_find(cache_root, (struct ldus_rbtree *)hash + node_offset);
 }
 
 
@@ -499,6 +525,7 @@ static int add_block_nolock(struct xdag_block *newBlock, xdag_time_t limit)
 
 	if(block_by_hash(tmpNodeBlock.hash)) return 0;
 
+
 	if(xdag_type(newBlock, 0) != g_block_header_type) {
 		i = xdag_type(newBlock, 0);
 		err = 1;
@@ -718,7 +745,7 @@ static int add_block_nolock(struct xdag_block *newBlock, xdag_time_t limit)
 			*(next ? &next->ourprev : &ourlast) = prev;
 		}
 	} else {
-		nodeBlock = xdag_malloc(sizeof(struct block_internal));
+		nodeBlock = xdag_malloc(sizeof(struct block_internal) + sizeof(struct ldus_rbtree));
 	}
 	if(!nodeBlock) {
 		err = 0xC;

@@ -47,6 +47,8 @@ typedef struct {
 
 extern int g_use_tmpfile, g_detach_tree;
 
+int ciao = 0;
+
 // Function declarations
 int account_callback(void *data, xdag_hash_t hash, xdag_amount_t amount, xdag_time_t time, int n_our_key);
 
@@ -99,6 +101,10 @@ int xdag_com_disconnect(char *, FILE*);
 int xdag_com_white_list(char *, FILE*);
 int xdag_com_autorefresh(char *, FILE*);
 int xdag_com_reload(char *, FILE*);
+
+extern pthread_mutex_t g_create_block_mutex;
+extern pthread_mutex_t block_mutex;
+extern pthread_mutex_t rbtree_mutex;
 
 XDAG_COMMAND* find_xdag_command(char*);
 
@@ -556,6 +562,17 @@ void processStatsCommand(FILE *out)
 
 void processInternalStatsCommand(FILE *out)
 {
+	ciao = 1;
+	pthread_mutex_lock(&rbtree_mutex);
+	fprintf(out, "rbtree locked\n");
+	pthread_mutex_unlock(&rbtree_mutex);
+	pthread_mutex_lock(&block_mutex);
+	fprintf(out, "block locked\n");
+	pthread_mutex_unlock(&block_mutex);
+	pthread_mutex_lock(&g_create_block_mutex);
+	fprintf(out, "create block locked");
+	pthread_mutex_unlock(&g_create_block_mutex);
+
 	fprintf(out,
 		"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
 		"Temp file   :\n"

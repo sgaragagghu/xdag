@@ -44,6 +44,8 @@
 #define ORPHAN_HASH_SIZE	2
 #define MAX_ALLOWED_EXTRA	0x10000
 
+extern int ciao;
+
 struct block_backrefs;
 struct orphan_block;
 struct bi_tree_node;
@@ -107,7 +109,7 @@ enum orphan_remove_actions {
 
 #define get_orphan_index(bi)      (!!((bi)->flags & BI_EXTRA))
 
-static pthread_mutex_t g_create_block_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t g_create_block_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static xdag_amount_t g_balance = 0;
 static xdag_time_t time_limit = DEF_TIME_LIMIT, xdag_era = XDAG_MAIN_ERA;
@@ -115,8 +117,8 @@ static struct ldus_rbtree *root = 0, *cache_root = 0;
 static struct block_internal *volatile top_main_chain = 0, *volatile pretop_main_chain = 0;
 static struct block_internal *ourfirst = 0, *ourlast = 0;
 static struct cache_block *cache_first = NULL, *cache_last = NULL;
-static pthread_mutex_t block_mutex;
-static pthread_mutex_t rbtree_mutex;
+pthread_mutex_t block_mutex;
+pthread_mutex_t rbtree_mutex;
 //TODO: this variable duplicates existing global variable g_is_pool. Probably should be removed
 static int g_light_mode = 0;
 static uint32_t cache_bounded_counter = 0;
@@ -569,6 +571,10 @@ static int valid_signature(const struct xdag_block *b, int signo_r, int keysLeng
  */
 static int add_block_nolock(struct xdag_block *newBlock, xdag_time_t limit)
 {
+                if(g_xdag_state != XDAG_STATE_LOAD && ciao){
+			printf("inizio");
+			fflush(stdout);
+}
 	const uint64_t timestamp = get_timestamp();
 	uint64_t sum_in = 0, sum_out = 0, *psum = NULL;
 	const uint64_t transportHeader = newBlock->field[0].transport_header;
@@ -920,6 +926,11 @@ end:
 		sprintf(buf, "Err %2x", err & 0xff);
 		log_block(buf, tmpNodeBlock.hash, tmpNodeBlock.time, transportHeader);
 	}
+
+                if(g_xdag_state != XDAG_STATE_LOAD && ciao){
+                        printf("fine");
+                        fflush(stdout);
+}
 
 	return -err;
 }
@@ -1348,6 +1359,10 @@ begin:
 
 		if (!g_light_mode && (nblk = (unsigned)g_xdag_extstats.nnoref / (XDAG_BLOCK_FIELDS - 5))) {
 			nblk = nblk / 61 + (nblk % 61 > (unsigned)rand() % 61);
+			if(nblk){
+	//		printf("creating %d blocks", nblk);
+	//		fflush(stdout);
+	}
 
 			while (nblk--) {
 				xdag_create_and_send_block(0, 0, 0, 0, 0, 0, NULL);

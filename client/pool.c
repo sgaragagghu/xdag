@@ -133,6 +133,8 @@ xdag_hash_t g_xdag_mined_nonce[CONFIRMATIONS_COUNT];
 xdag_remark_t g_pool_tag = {0};
 int g_pool_has_tag = 0;
 
+extern int g_block_production_on;
+
 static uint32_t g_max_connections_count = START_MINERS_COUNT, g_max_miner_ip_count = START_MINERS_IP_COUNT;
 static uint32_t g_connections_per_miner_limit = DEFAUL_CONNECTIONS_PER_MINER_LIMIT;
 static uint32_t g_connections_count = 0;
@@ -261,9 +263,11 @@ int xdag_initialize_pool(const char *pool_arg)
 
 void *general_mining_thread(void *arg)
 {
-	while(!g_xdag_sync_on && !g_stop_general_mining) {
+	while(!g_block_production_on && !g_stop_general_mining) {
 		sleep(1);
 	}
+
+        xdag_mess("Starting main blocks creatin...");
 
 	while(!g_stop_general_mining) {
 		xdag_create_and_send_block(0, 0, 0, 0, 0, xdag_main_time() << 16 | 0xffff, NULL);
@@ -494,7 +498,7 @@ void *pool_net_thread(void *arg)
 	socklen_t peeraddr_len = sizeof(peeraddr);
 	int rcvbufsize = 1024;
 
-	while(!g_xdag_sync_on) {
+	while(!g_block_production_on) {
 		sleep(1);
 	}
 

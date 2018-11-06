@@ -1606,7 +1606,7 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 	nlinks = bi->nlinks;
 	memcpy(link, bi->link, nlinks * sizeof(struct block_internal*));
 
-        if(flags & BI_EXTRA) pthread_mutex_unlock(&block_mutex);
+	if(flags & BI_EXTRA) pthread_mutex_unlock(&block_mutex);
 
 	for (i = 0; i < nlinks; ++i) {
 		xdag_hash2address(link[i]->hash, address);

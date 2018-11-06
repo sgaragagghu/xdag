@@ -1598,8 +1598,18 @@ int xdag_print_block_info(xdag_hash_t hash, FILE *out)
 	}
 	fprintf(out, "       fee: %s  %10u.%09u\n", address, pramount(bi->fee));
 
-	for (i = 0; i < bi->nlinks; ++i) {
-		xdag_hash2address(bi->link[i]->hash, address);
+	struct block_internal *link[MAX_LINKS];
+	int nlinks;
+
+	if(flags & BI_EXTRA) pthread_mutex_lock(&block_mutex);
+
+	nlinks = bi->nlinks;
+	memcpy(link, bi->link, nlinks * sizeof(struct block_internal*));
+
+        if(flags & BI_EXTRA) pthread_mutex_unlock(&block_mutex);
+
+	for (i = 0; i < nlinks; ++i) {
+		xdag_hash2address(link[i]->hash, address);
 		fprintf(out, "    %6s: %s  %10u.%09u\n", (1 << i & bi->in_mask ? " input" : "output"),
 			address, pramount(bi->linkamount[i]));
 	}

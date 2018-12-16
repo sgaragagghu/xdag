@@ -51,6 +51,7 @@
 #define BAD_CONN_TIMEOUT_SEC		90
 
 extern int g_xdag_sync_on;
+int g_dnet_time_limit_disabled;
 
 #define XSECTOR \
 union { \
@@ -310,6 +311,10 @@ void *dnet_send_xdag_packet(void *block, void *data)
 	struct send_parameters *sp = data;
 	struct xconnection *conn = sp->connection;
 	struct xsector_extended *buf;
+
+	if (g_dnet_time_limit_disabled) {
+		sp->time_limit = 0;
+	}
 
 	if (sp->time_limit && time(NULL) > sp->time_limit) {
 		return (void*)(intptr_t)-1;
@@ -848,7 +853,7 @@ int dnet_execute_command(const char *cmd, void *fileout)
 	strcpy(buf, cmd);
 	str = strtok_r(buf, " \t\r\n", &lasts);
 	if(!str) {
-		return 0;
+		dnet_help();
 	} else if(!strcmp(str, "conn")) {
 		struct xconnection *conn;
 		char buf[32];
@@ -871,6 +876,8 @@ int dnet_execute_command(const char *cmd, void *fileout)
 			return -1;
 		}
 
+		
+		fprintf(f, "connect: connecting...");
 		fd = open_socket(&peeraddr, str);
 		if(fd < 0) {
 			fprintf(f, "connect: error opening the socket\n");
@@ -891,6 +898,15 @@ int dnet_execute_command(const char *cmd, void *fileout)
 		}
 	} else if(!strcmp(str, "help")) {
 		dnet_help();
+	} else if (!strcmp(str, "internals")) {
+		        fprintf(f,
+		"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n"
+		"Time limit:\n"
+		"     state: %s\n"
+		"~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n",
+		(g_dnet_time_limit_disabled ? "Inactive" : "Active" ));
+	} else if (!strcmp(str, "switch_tl")) {
+		g_dnet_time_limit_disabled = !g_dnet_time_limit_disabled;
 	}
 	return 0;
 }
